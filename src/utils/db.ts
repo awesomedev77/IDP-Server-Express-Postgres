@@ -1,5 +1,3 @@
-// src/data-source.ts
-
 import { DataSource } from 'typeorm';
 import dotenv from 'dotenv';
 import { Application } from '../entity/Application';
@@ -9,6 +7,8 @@ import { Document } from '../entity/Document';
 import { Report } from '../entity/Report';
 import { Query } from '../entity/Query';
 import { Message } from '../entity/Message';
+import { Type } from '../entity/Type';
+import { Process } from '../entity/Process';
 
 dotenv.config();
 
@@ -17,7 +17,7 @@ export const AppDataSource = new DataSource({
     url: process.env.DATABASE_URL,
     synchronize: false, // Note: set this to false in production
     logging: false,
-    entities: [User, Company, Application, Document, Report, Query, Message],
+    entities: [User, Company, Application, Document, Report, Query, Message, Type, Process],
     subscribers: [],
     migrations: [],
 });

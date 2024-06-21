@@ -1,41 +1,15 @@
 import { AppDataSource } from "./db";
 import { Document } from "../entity/Document";
 import { Report } from "../entity/Report";
-import fetch from 'node-fetch';
-import FormData from 'form-data';
-import fs from 'fs';
 
 
-const extractFileName = (path: string): string => {
-    // Split the path by the '\' to isolate the file part
-    const parts = path.split('\\');
-    const fullFileName = parts.pop(); // Get the last element which is the file name with timestamp
 
-    if (!fullFileName) {
-        return 'Invalid path'; // Return an error message or handle it as needed
-    }
-
-    // Remove the timestamp by splitting on the first dash and taking the rest parts
-    const nameParts = fullFileName.split('-');
-    nameParts.shift(); // Remove the timestamp part (first element)
-
-    // Rejoin the remaining parts that were split, to handle cases where filename might contain dashes
-    return nameParts.join('-');
-};
 
 export const processDocument = async (document: Document) => {
     const documentRepository = AppDataSource.getRepository(Document);
     const reportRepository = AppDataSource.getTreeRepository(Report);
     try {
-        const formData = new FormData();
-        const fileStream = fs.createReadStream(document.path);
-        formData.append('file', fileStream, extractFileName(document.path));
 
-        // const response = await fetch(`${process.env.API_URL}/report/${document.application.id}`, {
-        //   method: 'POST',
-        //   body: formData,
-        //   headers: formData.getHeaders()
-        // });
         const delay = (time: number) => {
             return new Promise(resolve => setTimeout(resolve, time));
         }
@@ -66,9 +40,7 @@ export const processDocument = async (document: Document) => {
         `;
         }
 
-        // if (response.ok) {
         if (1) {
-            // const responseText = await response.text();
             const responseText = await getResult();
             const start_pos = responseText.indexOf('{');
             const end_pos = responseText.lastIndexOf('}') + 1;
@@ -102,14 +74,13 @@ export const processDocument = async (document: Document) => {
         } else {
             document.status = "N"
             await documentRepository.save(document);
-            // console.error(`Failed to upload ${extractFileName(document.path)}. Error: ${await response.text()}`);
             console.error('error')
             return "error";
         }
     } catch (error) {
         document.status = "N"
         await documentRepository.save(document);
-        console.error(`Error processing document ${extractFileName(document.path)}: ${error}`);
+        console.error(`Error processing document ${document.path}: ${error}`);
         return "error";
     }
 }

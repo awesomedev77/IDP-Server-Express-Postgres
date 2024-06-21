@@ -34,7 +34,7 @@ export const addDocument = async (req: Request, res: Response) => {
         return documentRepository.create({
           status: "A",
           path: file.path,
-          application: { id: loanId },
+          process: { id: loanId },
         });
       });
       savedDocuments = await documentRepository.save(documents);

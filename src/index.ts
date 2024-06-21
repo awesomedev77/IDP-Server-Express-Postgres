@@ -4,7 +4,10 @@ import cors from 'cors';
 import passport from 'passport';
 import dotenv from 'dotenv';
 import authRoutes from './routes/authRoutes';
-import applicationRoutes from './routes/applicationRoutes';
+// import applicationRoutes from './routes/applicationRoutes';
+import typeRoutes from './routes/typeRoutes';
+import processRoutes from './routes/processRoutes';
+import documentRoutes from './routes/documentRoutes';
 import reportRoutes from './routes/reportRoutes';
 import queryRoutes from './routes/queryRoutes';
 import passportConfig from './config/passport';
@@ -21,9 +24,11 @@ app.use(passport.initialize());
 passportConfig(passport);
 
 app.use('/api/auth', authRoutes);
-app.use('/api/applications', passport.authenticate('jwt', { session: false }), authenticate, applicationRoutes);
-app.use('/api/report',  passport.authenticate('jwt', { session: false }), authenticate, reportRoutes);
-app.use('/api/query',  passport.authenticate('jwt', { session: false }), authenticate, queryRoutes);
+app.use('/api/document', passport.authenticate('jwt', { session: false }), authenticate, documentRoutes);
+app.use('/api/type', passport.authenticate('jwt', { session: false }), authenticate, typeRoutes);
+app.use('/api/process', passport.authenticate('jwt', { session: false }), authenticate, processRoutes);
+app.use('/api/report', passport.authenticate('jwt', { session: false }), authenticate, reportRoutes);
+app.use('/api/query', passport.authenticate('jwt', { session: false }), authenticate, queryRoutes);
 
 const startServer = async () => {
   try {
@@ -36,5 +41,5 @@ const startServer = async () => {
   }
 };
 
-  
-  startServer();
+
+startServer();
