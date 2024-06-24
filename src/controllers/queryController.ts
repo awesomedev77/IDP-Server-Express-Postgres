@@ -4,8 +4,8 @@ import { Query } from "../entity/Query";
 import { Message } from "../entity/Message";
 import { AppDataSource } from "../utils/db";
 
-export const getQueriesByApplication = async (req: Request, res: Response) => {
-  const applicationId = parseInt(req.params.id);;
+export const getQueriesByProcess = async (req: Request, res: Response) => {
+  const processId = parseInt(req.params.id);;
   const queryRepository = AppDataSource.getRepository(Query);
 
   // Fetch all queries with their latest message date
@@ -13,7 +13,7 @@ export const getQueriesByApplication = async (req: Request, res: Response) => {
     .createQueryBuilder("query")
     .leftJoinAndSelect("query.messages", "message")
     .leftJoinAndSelect("query.user", "user")
-    .where("query.application_id = :applicationId", { applicationId })
+    .where("query.process_id = :processId", { processId })
     .orderBy("message.created_at", "DESC")
     .getMany();
 
@@ -52,14 +52,14 @@ export const getQueriesByApplication = async (req: Request, res: Response) => {
 };
 
 export const createQueryAndMessage = async (req: Request, res: Response) => {
-  const { applicationId, prompt } = req.body;
+  const { processId, prompt } = req.body;
   const queryRepository = AppDataSource.getRepository(Query);
   const messageRepository = AppDataSource.getRepository(Message);
   const user = req.user;
 
   const query = queryRepository.create({
     user: user,
-    applicationId: applicationId,
+    processId: processId,
   });
   const savedQuery = await queryRepository.save(query);
 
@@ -183,7 +183,7 @@ export const editMessage = async (req: Request, res: Response) => {
   if (1) {
     const answer = await getResult();
     const message = query.messages[0];
-    const currentTime = new Date(); 
+    const currentTime = new Date();
     // const formattedTime = moment(currentTime).format('YYYY-MM-DD HH:mm:ss');
     message.prompt = prompt;
     message.answer = answer;
@@ -195,7 +195,7 @@ export const editMessage = async (req: Request, res: Response) => {
     const message = query.messages[0];
     message.prompt = prompt;
     message.answer = "";
-    const currentTime = new Date(); 
+    const currentTime = new Date();
     // const formattedTime = moment(currentTime).format('YYYY-MM-DD HH:mm:ss');
     message.createdAt = currentTime;
     await messageRepository.save(message);

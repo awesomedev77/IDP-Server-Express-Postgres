@@ -9,6 +9,7 @@ import { User } from '../entity/User';
 import FormData from 'form-data';
 import Axios from 'axios';
 import fs from 'fs';
+import { ILike } from 'typeorm';
 
 
 const extractFileName = (path: string): string => {
@@ -75,12 +76,70 @@ export const addDocuments = async (req: Request, res: Response) => {
 
 
 export const getDocuments = async (req: Request, res: Response) => {
-  const documentRepository = AppDataSource.getRepository(Document); const page = parseInt(req.query.page as string) || 1;
+  const documentRepository = AppDataSource.getRepository(Document);
+  const page = parseInt(req.query.page as string) || 1;
   const limit = parseInt(req.query.limit as string) || 9; // Default to 9 if limit is not provided
-  const user = req.user as User;
+  const query = req.query.query;
+  const typeFilter = req.query.typeFilter;
+  const processFilter = req.query.processFilter;
+
   try {
+    let whereClause: any = {};
+    if (query) {
+      // Create an OR condition to search in all fields and related fields
+      whereClause = [
+        { path: ILike(`%${query}%`) },
+        {
+          creator: {
+            fullName: ILike(`%${query}%`),
+          }
+        },
+        {
+          creator: {
+            role: ILike(`%${query}%`)
+          }
+        },
+        {
+          process: {
+            processName: ILike(`%${query}%`),
+          }
+        },
+        {
+          process: {
+            processDescription: ILike(`%${query}%`)
+          }
+        },
+        {
+          documentType: {
+            typeName: ILike(`%${query}%`)
+          }
+        }
+      ];
+      if (processFilter  && processFilter != "-1") {
+        whereClause = whereClause.filter((item: any) => !item.process).map((item: any) => ({
+          ...item,
+          process: { id: processFilter }
+        }));
+      }
+      if (typeFilter && typeFilter != "-1") {
+        whereClause = whereClause.filter((item: any) => !item.documentType).map((item: any) => ({
+          ...item,
+          documentType: { id: typeFilter }
+        }));
+      }
+    } else {
+      if (processFilter && processFilter != "-1") {
+        whereClause.process = { id: processFilter };
+      }
+      if (typeFilter && typeFilter != "-1") {
+        whereClause.documentType = {
+          id: typeFilter
+        };
+      }
+    }
     const [documents, total] = await documentRepository.findAndCount({
       relations: ['creator', 'process', 'documentType'],
+      where: whereClause,
       skip: (page - 1) * limit,
       take: limit,
       order: {

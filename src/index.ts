@@ -5,6 +5,7 @@ import passport from 'passport';
 import dotenv from 'dotenv';
 import authRoutes from './routes/authRoutes';
 // import applicationRoutes from './routes/applicationRoutes';
+import detailRoutes from "./routes/detailRoutes";
 import typeRoutes from './routes/typeRoutes';
 import processRoutes from './routes/processRoutes';
 import documentRoutes from './routes/documentRoutes';
@@ -27,6 +28,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/document', passport.authenticate('jwt', { session: false }), authenticate, documentRoutes);
 app.use('/api/type', passport.authenticate('jwt', { session: false }), authenticate, typeRoutes);
 app.use('/api/process', passport.authenticate('jwt', { session: false }), authenticate, processRoutes);
+app.use('/api/details', passport.authenticate('jwt', { session: false }), authenticate, detailRoutes);
 app.use('/api/report', passport.authenticate('jwt', { session: false }), authenticate, reportRoutes);
 app.use('/api/query', passport.authenticate('jwt', { session: false }), authenticate, queryRoutes);
 

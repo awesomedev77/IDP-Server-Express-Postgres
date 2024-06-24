@@ -12,8 +12,8 @@ export class Query {
     @JoinColumn({ name: "user_id" })
     user!: User;
 
-    @Column({ name: "application_id" })
-    applicationId!: number;
+    @Column({ name: "process_id" })
+    processId!: number;
 
     @OneToMany(() => Message, message => message.query)
     messages!: Message[];

@@ -5,7 +5,7 @@ import { createUser, findUserByUsername } from '../models/user';
 import dotenv from 'dotenv';
 import { AppDataSource } from '../utils/db';
 import { User } from '../entity/User';
-import { Not } from 'typeorm';
+import { ILike, Not } from 'typeorm';
 
 dotenv.config();
 const jwtSecret = process.env.JWT_SECRET;
@@ -68,10 +68,25 @@ export const getAll = async (req: Request, res: Response) => {
   const userRepository = AppDataSource.getRepository(User);
   const page = parseInt(req.query.page as string) || 1;
   const limit = parseInt(req.query.limit as string) || 9; // Default to 9 if limit is not provided
-
+  const query = req.query.query;
   try {
+    let whereClause: any = {};
+    if (query) {
+      whereClause = [
+        {
+          fullName: ILike(`%${query}%`)
+        },
+        {
+          role: ILike(`%${query}%`)
+        },
+        {
+          email: ILike(`%${query}%`)
+        }
+      ]
+    }
     const [users, total] = await userRepository.findAndCount({
       skip: (page - 1) * limit,
+      where: whereClause,
       take: limit,
       order: {
         id: 'DESC',
