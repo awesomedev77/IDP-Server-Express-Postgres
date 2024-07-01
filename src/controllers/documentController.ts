@@ -1,7 +1,5 @@
 import { Request, Response } from 'express';
 import { AppDataSource } from '../utils/db';
-import { Application } from '../entity/Application';
-import { Company } from '../entity/Company';
 import { Document } from '../entity/Document';
 import { Report } from '../entity/Report';
 import { processDocument } from '../utils/processDocument';
@@ -9,8 +7,19 @@ import { User } from '../entity/User';
 import FormData from 'form-data';
 import Axios from 'axios';
 import fs from 'fs';
-import { ILike } from 'typeorm';
+import { ILike, In } from 'typeorm';
+import { DocumentType } from '../entity/DocumentType';
+import { Type } from '../entity/Type';
 
+function ensureArray(input: string | string[]): string[] {
+  if (Array.isArray(input)) {
+    // If input is already an array, return it as is
+    return input;
+  } else {
+    // If input is not an array, convert it to an array with a single element
+    return [input];
+  }
+}
 
 const extractFileName = (path: string): string => {
   // Split the path by the '\' to isolate the file part
@@ -32,51 +41,65 @@ const extractFileName = (path: string): string => {
 
 export const addDocuments = async (req: Request, res: Response) => {
   const documentRepository = AppDataSource.getRepository(Document);
+  const typeRepository = AppDataSource.getRepository(Type);
+  const documentTypeRepository = AppDataSource.getRepository(DocumentType);
   const user = req.user as User;
 
   try {
-    const {
-      processId,
-    } = req.body;
+    const { processId } = req.body;
 
     if (req.files && (req.files as Express.Multer.File[]).length > 0) {
-      const documents = (req.files as Express.Multer.File[]).map((file, index) => {
-        const fileType = req.body.fileTypes[index];  // Assuming fileType is sent as an array of strings
-        return documentRepository.create({
+      const fileTypes = ensureArray(req.body.fileTypes)
+      const documents = await Promise.all((req.files as Express.Multer.File[]).map(async (file, index) => {
+        const fileTypeIds = fileTypes[index].split('-').map(Number); // Assuming fileType is sent as an array of strings
+        const document = documentRepository.create({
           status: 'A',
           path: file.path,
           process: { id: processId },
-          documentType: { id: fileType },
-          creator: { id: user.id }
-        })
-      });
-      for (const document of documents) {
-        processDocument(document);
+          creator: { id: user.id },
+        });
+        await documentRepository.save(document);
+
+        const documentTypes = fileTypeIds.map((filetypeId: any) => {
+          const docType = documentTypeRepository.create({
+            document,
+            type: { id: filetypeId }
+          });
+          return documentTypeRepository.save(docType);
+        });
+
+        await Promise.all(documentTypes);
+
         const formData = new FormData();
         const fileStream = fs.createReadStream(document.path);
         formData.append('file', fileStream, extractFileName(document.path));
+
         try {
-          await Axios.post(`${process.env.API_URL}/report/${document.process.id}`, {
-            method: 'POST',
-            body: formData,
+          await Axios.post(`${process.env.API_URL}/report/${document.process.id}`, formData, {
             headers: formData.getHeaders()
-          })
+          });
           document.status = "A";
         } catch (e) {
           document.status = 'N';
         }
-        documentRepository.save(document);
-      };
+
+        await documentRepository.save(document);
+        return document;
+      }));
+
+      res.status(201).json({ message: "Documents added successfully", documents });
+    } else {
+      res.status(400).json({ message: "No files uploaded" });
     }
-    res.status(201).json({ message: "success" });
   } catch (error) {
+    console.error(error);
     res.status(500).json({ message: "Failed to add documents" });
   }
 };
 
-
 export const getDocuments = async (req: Request, res: Response) => {
   const documentRepository = AppDataSource.getRepository(Document);
+  const documentTypeRepository = AppDataSource.getRepository(DocumentType);
   const page = parseInt(req.query.page as string) || 1;
   const limit = parseInt(req.query.limit as string) || 9; // Default to 9 if limit is not provided
   const query = req.query.query;
@@ -109,22 +132,25 @@ export const getDocuments = async (req: Request, res: Response) => {
             processDescription: ILike(`%${query}%`)
           }
         },
-        {
-          documentType: {
-            typeName: ILike(`%${query}%`)
-          }
-        }
       ];
-      if (processFilter  && processFilter != "-1") {
+      if (processFilter && processFilter != "-1") {
         whereClause = whereClause.filter((item: any) => !item.process).map((item: any) => ({
           ...item,
           process: { id: processFilter }
         }));
       }
       if (typeFilter && typeFilter != "-1") {
-        whereClause = whereClause.filter((item: any) => !item.documentType).map((item: any) => ({
+        const documentIdsWithType = await documentRepository
+          .createQueryBuilder('document')
+          .leftJoin('document.documentTypes', 'documentType')
+          .leftJoin('documentType.type', 'type')
+          .where('type.id = :typeId', { typeId: typeFilter })
+          .select('document.id')
+          .getRawMany();
+        const documentIds = documentIdsWithType.map((doc: any) => doc.document_id);
+        whereClause = whereClause.map((item: any) => ({
           ...item,
-          documentType: { id: typeFilter }
+          id: In(documentIds)
         }));
       }
     } else {
@@ -132,13 +158,20 @@ export const getDocuments = async (req: Request, res: Response) => {
         whereClause.process = { id: processFilter };
       }
       if (typeFilter && typeFilter != "-1") {
-        whereClause.documentType = {
-          id: typeFilter
-        };
+        const documentIdsWithType = await documentRepository
+          .createQueryBuilder('document')
+          .leftJoin('document.documentTypes', 'documentType')
+          .leftJoin('documentType.type', 'type')
+          .where('type.id = :typeId', { typeId: typeFilter })
+          .select('document.id')
+          .getRawMany();
+
+        const documentIds = documentIdsWithType.map((doc: any) => doc.document_id);
+        whereClause.id = In(documentIds);
       }
     }
     const [documents, total] = await documentRepository.findAndCount({
-      relations: ['creator', 'process', 'documentType'],
+      relations: ['creator', 'process', 'documentTypes', 'documentTypes.type'],
       where: whereClause,
       skip: (page - 1) * limit,
       take: limit,
@@ -153,7 +186,6 @@ export const getDocuments = async (req: Request, res: Response) => {
       totalPages: Math.ceil(total / limit),
       data: documents
     };
-
     res.status(200).json(data);
   } catch (error) {
     console.error('Error fetching applications:', error);

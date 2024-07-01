@@ -1,16 +1,16 @@
 // src/entity/Document.ts
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, ManyToMany, JoinTable, OneToMany } from 'typeorm';
 import { Process } from './Process';
 import { Type } from './Type';
 import { User } from './User';
+import { DocumentType } from './DocumentType';
 @Entity({ name: "documents" })
 export class Document {
     @PrimaryGeneratedColumn()
     id!: number;
 
-    @ManyToOne(() => Type)
-    @JoinColumn({ name: "type_id" })
-    documentType!: Type;
+    @OneToMany(() => DocumentType, documentType => documentType.document)
+    documentTypes!: DocumentType[];
 
     @Column()
     path!: string;
