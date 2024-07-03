@@ -25,15 +25,19 @@ export const getAllProcesses = async (req: Request, res: Response) => {
 export const getAll = async (req: Request, res: Response) => {
   const processRepository = AppDataSource.getRepository(Process);
   const page = parseInt(req.query.page as string) || 1;
-  const limit = parseInt(req.query.limit as string) || 9
+  const limit = parseInt(req.query.limit as string) || 9;
+  const sortBy = req.query.sortBy  || 'createdAt';
+  const sort = req.query.sort || 'DESC';
   try {
+    const order = {
+      [sortBy as string]: sort
+    } as { [key: string]: 'ASC' | 'DESC' };
+  
     const [processes, total] = await processRepository.findAndCount({
       relations: ['creator', 'documents'],
       skip: (page - 1) * limit,
       take: limit,
-      order: {
-        id: 'ASC',
-      }
+      order: order
     });
     const data = {
       total,

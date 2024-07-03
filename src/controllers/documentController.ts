@@ -105,6 +105,8 @@ export const getDocuments = async (req: Request, res: Response) => {
   const query = req.query.query;
   const typeFilter = req.query.typeFilter;
   const processFilter = req.query.processFilter;
+  let sortBy = req.query.sortBy  || 'createdAt';
+  const sort = req.query.sort || 'DESC';
 
   try {
     let whereClause: any = {};
@@ -170,14 +172,18 @@ export const getDocuments = async (req: Request, res: Response) => {
         whereClause.id = In(documentIds);
       }
     }
+    if(sortBy == "fileName"){
+      sortBy = 'path'
+    }
+    const order = {
+      [sortBy as string]: sort
+    } as { [key: string]: 'ASC' | 'DESC' };
     const [documents, total] = await documentRepository.findAndCount({
       relations: ['creator', 'process', 'documentTypes', 'documentTypes.type'],
       where: whereClause,
       skip: (page - 1) * limit,
       take: limit,
-      order: {
-        createdAt: 'DESC',
-      }
+      order: order
     });
 
     const data = {
