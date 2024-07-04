@@ -23,7 +23,7 @@ app.use(cors());
 app.use(bodyParser.json());
 app.use(passport.initialize());
 passportConfig(passport);
-
+app.use(express.static('uploads'));
 app.use('/api/auth', authRoutes);
 app.use('/api/document', passport.authenticate('jwt', { session: false }), authenticate, documentRoutes);
 app.use('/api/type', passport.authenticate('jwt', { session: false }), authenticate, typeRoutes);
