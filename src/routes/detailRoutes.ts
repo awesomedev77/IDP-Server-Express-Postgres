@@ -8,6 +8,7 @@ const router = express.Router();
 // router.get('/get', getApplications);
 // router.post('/status/:id', updateApplicationStatus);
 router.get('/process/:id', getDetailsByProcess);
+router.get('/document/:id', getDetailsByProcess);
 // router.post('/assign/:id', assignTo);
 
 export default router;
